@@ -36,7 +36,14 @@ class RegParser:
 
         if out is None:
             # Check if the prefixed name include ':'
-            obtained_id = string_to_parse.split(':')[1]
+            regex2 = "(.*):(.*)"
+
+            # Compile the Regex
+            re2 = re.compile(regex2)
+            if re2.match(string_to_parse):
+                obtained_id = string_to_parse.split(':')[1]
+            else:
+                obtained_id = string_to_parse
         else:
             # We have a URIREF
             out = out.group(1)
