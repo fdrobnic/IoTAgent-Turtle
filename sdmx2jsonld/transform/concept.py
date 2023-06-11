@@ -113,7 +113,8 @@ class Concept(CommonClass):
             self.data['skos:prefLabel']['value'][languages[i]] = descriptions[i]
 
         # Complete the information of the language with the previous information
-        key = self.keys['dct:language']
+        #key = self.keys['dct:language']
+        key = 'dct:language'
         self.data[key]['value'] = languages
 
         # Add the id
@@ -166,11 +167,13 @@ class Concept(CommonClass):
 
                 # We delete the "skos:inScheme" property from the final structure
                 self.data.pop('skos:inScheme')
+                position = 0
 
-        parser = RegParser()
-        concept_schema = data[position][0]
-        concept_schema = "urn:ngsi-ld:ConceptSchema:" + parser.obtain_id(concept_schema)
-        self.data['skos:inScheme']['value'] = concept_schema
+        if position > 0:
+            parser = RegParser()
+            concept_schema = data[position][0]
+            concept_schema = "urn:ngsi-ld:ConceptSchema:" + parser.obtain_id(concept_schema)
+            self.data['skos:inScheme']['value'] = concept_schema
 
     def need_add_notation(self, data):
         try:
