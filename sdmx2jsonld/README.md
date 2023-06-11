@@ -91,11 +91,14 @@ content to be sent to the FIWARE Context Broker:
 from sdmx2jsonld.transform.parser import Parser
 from sdmx2jsonld.exceptions import UnexpectedEOF, UnexpectedInput, UnexpectedToken
 
+file_in = open("structures-accounts.ttl", encoding='utf-8')
+generate_files = True
+
 # Start parsing the file
 my_parser = Parser()
 
 try:
-    my_parser.parsing(content=file_in, out=file_out)
+    my_parser.parsing(content=file_in, out=generate_files)
 except UnexpectedToken as e:
     print(e)
 except UnexpectedInput as e:
