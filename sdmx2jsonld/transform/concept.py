@@ -79,9 +79,13 @@ class Concept(CommonClass):
             position = data.index('skos:prefLabel') + 1
         except ValueError:
             # We could not find skos:prefLabel, try to find rdfs:label
-            position = data.index('rdfs:label') + 1
             logger.warning(f'The Concept {concept_id} does not contain skos:prefLabel but rdfs:label. We use its '
                            f'content to fill in the skos:prefLabel property')
+            try:
+                position = data.index('rdfs:label') + 1
+            except ValueError:
+                # We could not find rdfs:label
+                logger.warning(f'The Concept {concept_id} does not contain skos:prefLabel neither rdfs:label.')
 
         description = data[position]
         descriptions = [x[0].replace("\"", "") for x in description]
