@@ -29,7 +29,8 @@ class DataTypeConversion:
         self.types = {
             'xsd:dateTime': 'stodt',
             'xsd:int': 'stoi',
-            'xsd:boolean': 'stob'
+            'xsd:boolean': 'stob',
+            'xsd:anyURI': 'stou'
         }
         self.regex_12hour = compile(r"(^.*T%)(I)(.*)$")
         self.regex_microseconds = compile(r"^(.*T%.*:%S\.)(%H)*$")
@@ -96,6 +97,17 @@ class DataTypeConversion:
 
             # logger.error(f'Invalid value for boolean conversion: {str(value)}')
             raise Exception(f'Invalid value for boolean conversion: {str(value)}')
+
+        def stou(value):
+            """
+               Converts 'something' to URI. Raises exception for invalid formats
+            """
+            if isinstance(value, str):
+                result = value.replace('"', '')
+            else:
+                raise Exception(f'Invalid format received: {type(value)}')
+
+            return result
 
         try:
             function = self.types[datatype] + '(value=' + data + ')'
