@@ -65,7 +65,17 @@ class ConceptSchema(CommonClass):
     def add_data(self, concept_schema_id, data):
         # TODO: We have to control that data include the indexes that we want to search
         # We need to complete the data corresponding to the ConceptSchema: skos:prefLabel
-        position = data.index('skos:prefLabel') + 1
+        try:
+            position = data.index('skos:prefLabel') + 1
+        except ValueError:
+            # We could not find skos:prefLabel, try to find rdfs:label
+            logger.warning(f'The Concept {concept_schema_id} does not contain skos:prefLabel but rdfs:label. We use its '
+                           f'content to fill in the skos:prefLabel property')
+            try:
+                position = data.index('rdfs:label') + 1
+            except ValueError:
+                # We could not find rdfs:label
+                logger.warning(f'The Concept {concept_schema_id} does not contain skos:prefLabel neither rdfs:label.')
         description = data[position]
 
         descriptions = [x[0].replace("\"", "") for x in description]
