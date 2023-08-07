@@ -25,24 +25,21 @@ import re
 
 class RegParser:
     def __init__(self):
-        regex = "http[s]?:\/\/(.*)"
+        regex = "http[s]?:\/\/(.+)"
 
         # Compile the Regex
         self.re = re.compile(regex)
 
-    def obtain_id(self, string_to_parse):
+    def obtain_id(self, string_to_parse, prefix_string=""):
         # Return if the string matched the ReGex
         out = self.re.match(string_to_parse)
 
         if out is None:
             # Check if the prefixed name include ':'
-            regex2 = "(.*):(.*)"
-
-            # Compile the Regex
-            re2 = re.compile(regex2)
-            if re2.match(string_to_parse):
-                obtained_id = string_to_parse.split(':')[1]
-            else:
+            try:
+                obtained_id = string_to_parse.split(":")[1]
+            except IndexError:
+                # We have a normal prefix or data
                 obtained_id = string_to_parse
         else:
             # We have a URIREF
@@ -50,6 +47,6 @@ class RegParser:
             out = out.split("/")
 
             # we get the last value which corresponds to the id
-            obtained_id = out[(len(out) - 1):][0]
+            obtained_id = prefix_string + out[(len(out) - 1) :][0]
 
         return obtained_id

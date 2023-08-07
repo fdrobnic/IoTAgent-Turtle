@@ -23,27 +23,20 @@
 from logging import getLogger
 from sdmx2jsonld.common.commonclass import CommonClass
 from sdmx2jsonld.transform.context import Context
+from sdmx2jsonld.common.listmanagement import flatten_value
 
 logger = getLogger()
 
 
 class ConceptSchema(CommonClass):
     def __init__(self):
-        super().__init__(entity='ConceptScheme')
+        super().__init__(entity="ConceptScheme")
 
         self.data = {
             "id": str(),
             "type": "ConceptScheme",
-            "dct:language": {
-                "type": "Property",
-                "value": list()
-            },
-            "skos:hasTopConcept": {
-                "type": "Property",
-                "value": list()
-            },
-
-
+            "language": {"type": "Property", "value": list()},
+            "hasTopConcept": {"type": "Relationship", "object": list()},
             #################################################
             # TODO: New ETSI CIM NGSI-LD specification 1.4.2
             # Pending to implement in the Context Broker
@@ -53,46 +46,36 @@ class ConceptSchema(CommonClass):
             #     "LanguageMap": dict()
             # },
             #################################################
-            "skos:prefLabel": {
-                "type": "Property",
-                "value": dict()
-            },
-
-
-            "@context": dict()
+            "prefLabel": {"type": "Property", "value": dict()},
+            "@context": [
+                "https://raw.githubusercontent.com/smart-data-models/dataModel.STAT-DCAT-AP/master/context.jsonld"
+            ],
         }
+
+        self.keys = {k: k for k in self.data.keys()}
 
     def add_data(self, concept_schema_id, data):
         # TODO: We have to control that data include the indexes that we want to search
         # We need to complete the data corresponding to the ConceptSchema: skos:prefLabel
-        try:
-            position = data.index('skos:prefLabel') + 1
-        except ValueError:
-            # We could not find skos:prefLabel, try to find rdfs:label
-            logger.warning(f'The Concept {concept_schema_id} does not contain skos:prefLabel but rdfs:label. We use its '
-                           f'content to fill in the skos:prefLabel property')
-            try:
-                position = data.index('rdfs:label') + 1
-            except ValueError:
-                # We could not find rdfs:label
-                logger.warning(f'The Concept {concept_schema_id} does not contain skos:prefLabel neither rdfs:label.')
+        position = data.index("skos:prefLabel") + 1
         description = data[position]
 
-        descriptions = [x[0].replace("\"", "") for x in description]
+        descriptions = [x[0].replace('"', "") for x in description]
         languages = list()
 
         try:
             languages = [x[1].replace("@", "").lower() for x in description]
         except IndexError:
-            logger.warning(f'The ConceptSchema {concept_schema_id} has a '
-                           f'skos:prefLabel without language tag: {description}')
+            logger.warning(
+                f"The ConceptSchema {concept_schema_id} has a " f"skos:prefLabel without language tag: {description}"
+            )
 
             aux = len(description)
             if aux != 1:
                 logger.error(f"ConceptSchema: there is more than 1 description ({aux}), values: {description}")
             else:
                 # There is no language tag, we use by default 'en'
-                languages = ['en']
+                languages = ["en"]
                 logger.warning('ConceptSchema: selecting default language "en"')
 
         # Complete the skos:prefLabel
@@ -104,25 +87,43 @@ class ConceptSchema(CommonClass):
         #     self.data['skos:prefLabel']['LanguageMap'][languages[i]] = descriptions[i]
         ###############################################################################
         for i in range(0, len(languages)):
-            self.data['skos:prefLabel']['value'][languages[i]] = descriptions[i]
+            self.data["prefLabel"]["value"][languages[i]] = descriptions[i]
 
         # Complete the information of the language with the previous information
-        key = self.keys['dct:language']
-        self.data[key]['value'] = languages
+        key = self.keys["language"]
+        self.data[key]["value"] = languages
 
         # Add the id
-        self.data['id'] = "urn:ngsi-ld:ConceptSchema:" + concept_schema_id
+        self.data["id"] = "urn:ngsi-ld:ConceptSchema:" + concept_schema_id
 
         # TODO: We need to control that the concept id extracted here are the same that we analyse afterwards.
         # skos:hasTopConcept, this is a list of ids
-        position = data.index('skos:hasTopConcept') + 1
-        result = list(map(lambda x: self.generate_id(value=x, entity='Concept'), data[position]))
-        self.data['skos:hasTopConcept']['value'] = result
+        position = data.index("skos:hasTopConcept") + 1
+        result = list(map(lambda x: self.generate_id(value=x, entity="Concept"), data[position]))
+        self.data["hasTopConcept"]["object"] = result
 
-        # Simplify Context and order keys
+        # Get the rest of data, dct:created and dct:modified properties
+        try:
+            position = data.index("dct:created") + 1
+            self.data["created"] = {
+                "type": "Property",
+                "value": flatten_value(data[position]),
+            }
+        except ValueError:
+            logger.warning(f"dct:created is not present in the Concept Schema: {concept_schema_id}")
+
+        try:
+            position = data.index("dct:modified") + 1
+            self.data["modified"] = {
+                "type": "Property",
+                "value": flatten_value(data[position]),
+            }
+        except ValueError:
+            logger.warning(f"dct:modified is not present in the Concept Schema: {concept_schema_id}")
+
+        # Order the keys in the final json-ld
         a = Context()
-        a.set_data(data=self.data)
-        a.new_analysis()
+        a.set_data(new_data=self.data)
         a.order_context()
         self.data = a.get_data()
 

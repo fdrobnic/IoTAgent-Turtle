@@ -1,0 +1,350 @@
+openapi: 3.0.3
+info:
+  description: 'Spec for the IoTAgent-Turtle agent'
+  version: 0.0.1
+  title: IoTAgentTurtle
+  contact:
+    email: fernando.lopez@fiware.org
+externalDocs:
+  description: Implementation on github.
+  url: 'https://github.com/flopezag/IoTAgent-Turtle'
+tags:
+  - name: Ops
+    description: Method to provide health info about the service information
+  - name: Parse
+    description: Perform the parse operation.
+paths:
+  '/version':
+    get:
+      tags:
+        - Ops
+      description: Provide the current health status and information vertsion of IoTAgent-Turtle.
+      operationId: getversion
+      responses:
+        '200':
+          description: Service is up and running and provide description information about the server.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VersionInfo'
+
+  '/parse':
+    post:
+      tags:
+        - Parse
+      description: Parse a SDMX Turtle file into a NGSI-LD (JSON-LD) format and try to create all the entities found in the ngsi-ld Context Broker.
+      operationId: parse
+      requestBody:
+        required: true
+        content:
+          form-data:
+            schema:
+              $ref: '#/components/schemas/TurtleFile'
+      responses:
+        '201':
+          description: File succesfully read, parsed, and forwarded to the FIWARE Context Broker with several entities. For each of these entities a request to the Context Broker is performed. The result will be a json array containing an explanation to the result of every entity which was processed. The client application will be able to query if everything was properly created in the context broker reading each entry of the result array.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  oneOf:
+                    - $ref: '#/components/schemas/Http201ResponseInfo'
+                    - $ref: '#/components/schemas/Http409ResponseInfo'
+                    - $ref: '#/components/schemas/Http400ResponseInfo'
+                    - $ref: '#/components/schemas/HttpOtherErrorsResponseInfo'
+        '500':
+          description: Problem connecting or accessing Context Broker.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Http500Error'
+components:
+  schemas:
+    Http201ResponseInfo:
+      type: object
+      description: Return status from CB to a given entity creation request
+      properties:
+        id:
+          type: string
+          example: "urn:ngsi-ld:Distribution:d2c32c6c6e637c0b319139ff25c1eff4"
+        status_code:
+          type: number
+          example: 201
+          description: The entity was created in the CB.
+        reason:
+          type: string
+          example: "Created"
+    Http400ResponseInfo:
+      type: object
+      description: Return status from CB to a given entity creation request
+      properties:
+        id:
+          type: string
+          example: "urn:ngsi-ld:AttributeProperty:a3018"
+        status_code:
+          type: number
+          example: 400
+          description: The format of the entity is not appropriate to the context broker, thus it is not created and HTTP/400 is returned.
+        reason:
+          type: string
+          example: "Bad Request"
+    Http409ResponseInfo:
+      type: object
+      description: Return status from CB to a given entity creation request
+      properties:
+        id:
+          type: string
+          example: "urn:ngsi-ld:Observation:obs-A-N-BE-W2-S1-S1-NA-B1G-_Z-A-_Z-XDC-V-N-2013"
+        status_code:
+          type: number
+          example: 409
+          description: The entity can't be created because it already exists in the Contest Broker.
+        reason:
+          type: string
+          example: "Conflict"
+    HttpOtherErrorsResponseInfo:
+      type: object
+      description: Return status from CB to a given entity creation request
+      properties:
+        id:
+          type: string
+          example: "urn:ngsi-ld:Concept:dissOrg"
+        status_code:
+          type: number
+          example: 422
+          description: The entity tryed to be creted in the context Broker shows other errors..
+        reason:
+          type: string
+          example: "Unprocessable entity"
+          description: Return reason will describe the problem with the creation of the entity in the context broker. It will be different to the previously explained ones and to the 500 error.
+    Http500Error:
+      type: object
+      description: Detailed error / problem with Context Broker
+      properties:
+        detail:
+          type: string
+          example: |
+           HTTPConnectionPool(host='orion-ld', port=1026): Max retries exceeded with url: /ngsi-ld/v1/entities (Caused by NameResolutionError(\"<urllib3.connection.HTTPConnection object at 0x7f9d21717b90>: Failed to resolve 'orion-ld' ([Errno -5] Name has no usable address)\"))
+    VersionInfo:
+      type: object
+      description: Status of the running service
+      properties:
+        doc:
+          type: string
+          description: Link to the documentation of the component.
+          example: "UP"
+        git_hash:
+          type: string
+          description: Git hash of the current executed version.
+          example: "UP"
+        version:
+          type: string
+          description: Current version of the IoTAgent-Turtle server
+          example: "UP"
+        release_date:
+          type: string
+          description: Release date of the executed IoTAgent-Turtle server.
+          example: "UP"
+        uptime:
+          type: string
+          description: Time that the IoTAgent-Turtle server is up and running.
+          example: "UP"
+      required:
+        - doc
+        - git_hash
+        - version
+        - release_date
+        - uptime
+
+    TurtleFile:
+      type: string
+      format: binary
+      description: |
+        @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>.        
+
+        @prefix dc: <http://purl.org/dc/elements/1.1/> .        
+
+        @prefix dcterms: <http://purl.org/dc/terms/> .        
+
+        @prefix qb: <http://purl.org/linked-data/cube#> .        
+
+        @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .        
+
+        @prefix owl: <http://www.w3.org/2002/07/owl#> .        
+
+        @prefix skos: <http://www.w3.org/2004/02/skos/core#> .        
+
+        @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .        
+
+        @prefix sdmx: <http://purl.org/linked-data/sdmx#> .        
+
+        @prefix sdmx-concept: <http://purl.org/linked-data/sdmx/2009/concept#> .        
+
+        @prefix sdmx-dimension: <http://purl.org/linked-data/sdmx/2009/dimension#> .        
+
+        @prefix sdmx-attribute: <http://purl.org/linked-data/sdmx/2009/attribute#> .        
+
+        @prefix sdmx-measure: <http://purl.org/linked-data/sdmx/2009/measure#> .        
+
+        @prefix sdmx-metadata: <http://purl.org/linked-data/sdmx/2009/metadata#> .        
+
+        @prefix sdmx-code: <http://purl.org/linked-data/sdmx/2009/code#> .        
+
+        @prefix sdmx-subject: <http://purl.org/linked-data/sdmx/2009/subject#> .        
+
+                
+
+        <http://bauhaus/jeuDeDonnees/ds1002> a qb:DataSet ;        
+
+        dcterms:issued "2022-04-01T08:00:00.000"^^xsd:dateTime ;        
+
+        dcterms:publisher <http://id.insee.fr/organisations/insee> ;        
+
+        dcterms:title "GDP and main components (current prices)"@en, "PIB et principales composantes (prix courants)"@fr ;        
+
+        qb:structure <http://bauhaus/structuresDeDonnees/structure/dsd3001> ;        
+
+        rdfs:label "GDP and main components (current prices)"@en, "PIB et principales composantes (prix courants)"@fr ;        
+
+        sdmx-attribute:title "GDP and main components (current prices)"@en, "PIB et principales composantes (prix courants)"@fr .        
+
+                
+
+        <http://bauhaus/jeuDeDonnees/ds1002/obs-A-N-BE-W2-S1-S1-NA-B1G-_Z-A-_Z-XDC-V-N-2011> a qb:Observation;        
+
+        <http://bauhaus/structuresDeDonnees/composants/dimension/d3002> <http://bauhaus/codes/ajustementSaisonnier/N> ;        
+
+        <http://bauhaus/structuresDeDonnees/composants/dimension/d3004> "W2" ;        
+
+        <http://bauhaus/structuresDeDonnees/composants/dimension/d3005> "S1" ;        
+
+        <http://bauhaus/structuresDeDonnees/composants/dimension/d3006> "S1" ;        
+
+        <http://bauhaus/structuresDeDonnees/composants/dimension/d3007> "B" ;        
+
+        <http://bauhaus/structuresDeDonnees/composants/dimension/d3008> "B1G" ;        
+
+        <http://bauhaus/structuresDeDonnees/composants/dimension/d3009> "_Z" ;        
+
+        <http://bauhaus/structuresDeDonnees/composants/dimension/d3010> "A" ;        
+
+        <http://bauhaus/structuresDeDonnees/composants/dimension/d3011> "_Z" ;        
+
+        <http://bauhaus/structuresDeDonnees/composants/dimension/d3012> "XDC" ;        
+
+        <http://bauhaus/structuresDeDonnees/composants/dimension/d3013> "V" ;        
+
+        <http://bauhaus/structuresDeDonnees/composants/dimension/d3014> "N" ;        
+
+        qb:dataSet <http://bauhaus/jeuDeDonnees/ds1002> ;        
+
+        sdmx-attribute:confStatus sdmx-code:confStatus-F ;        
+
+        sdmx-attribute:decimals sdmx-code:decimals-1 ;        
+
+        sdmx-attribute:obsStatus sdmx-code:obsStatus-A ;        
+
+        sdmx-attribute:unitMult sdmx-code:unitMult-6 ;        
+
+        sdmx-dimension:freq sdmx-code:freq-A ;        
+
+        sdmx-dimension:refArea "BE" ;        
+
+        sdmx-dimension:timePeriod "2011" ;        
+
+        sdmx-measure:obsValue "1016.9"^^xsd:float .        
+
+                
+
+        <http://bauhaus/jeuDeDonnees/ds1002/obs-A-N-BE-W2-S1-S1-NA-B1G-_Z-A-_Z-XDC-V-N-2012> a qb:Observation;        
+
+        <http://bauhaus/structuresDeDonnees/composants/dimension/d3002> <http://bauhaus/codes/ajustementSaisonnier/N> ;        
+
+        <http://bauhaus/structuresDeDonnees/composants/dimension/d3004> "W2" ;        
+
+        <http://bauhaus/structuresDeDonnees/composants/dimension/d3005> "S1" ;        
+
+        <http://bauhaus/structuresDeDonnees/composants/dimension/d3006> "S1" ;        
+
+        <http://bauhaus/structuresDeDonnees/composants/dimension/d3007> "B" ;        
+
+        <http://bauhaus/structuresDeDonnees/composants/dimension/d3008> "B1G" ;        
+
+        <http://bauhaus/structuresDeDonnees/composants/dimension/d3009> "_Z" ;        
+
+        <http://bauhaus/structuresDeDonnees/composants/dimension/d3010> "A" ;        
+
+        <http://bauhaus/structuresDeDonnees/composants/dimension/d3011> "_Z" ;        
+
+        <http://bauhaus/structuresDeDonnees/composants/dimension/d3012> "XDC" ;        
+
+        <http://bauhaus/structuresDeDonnees/composants/dimension/d3013> "V" ;        
+
+        <http://bauhaus/structuresDeDonnees/composants/dimension/d3014> "N" ;        
+
+        qb:dataSet <http://bauhaus/jeuDeDonnees/ds1002> ;        
+
+        sdmx-attribute:confStatus sdmx-code:confStatus-F ;        
+
+        sdmx-attribute:decimals sdmx-code:decimals-1 ;        
+
+        sdmx-attribute:obsStatus sdmx-code:obsStatus-A ;        
+
+        sdmx-attribute:unitMult sdmx-code:unitMult-6 ;        
+
+        sdmx-dimension:freq sdmx-code:freq-A ;        
+
+        sdmx-dimension:refArea "BE" ;        
+
+        sdmx-dimension:timePeriod "2012" ;        
+
+        sdmx-measure:obsValue "3016.9"^^xsd:float .        
+
+                
+
+        <http://bauhaus/jeuDeDonnees/ds1002/obs-A-N-BE-W2-S1-S1-NA-B1G-_Z-A-_Z-XDC-V-N-2013> a qb:Observation;        
+
+        <http://bauhaus/structuresDeDonnees/composants/dimension/d3002> <http://bauhaus/codes/ajustementSaisonnier/N> ;        
+
+        <http://bauhaus/structuresDeDonnees/composants/dimension/d3004> "W2" ;        
+
+        <http://bauhaus/structuresDeDonnees/composants/dimension/d3005> "S1" ;        
+
+        <http://bauhaus/structuresDeDonnees/composants/dimension/d3006> "S1" ;        
+
+        <http://bauhaus/structuresDeDonnees/composants/dimension/d3007> "B" ;        
+
+        <http://bauhaus/structuresDeDonnees/composants/dimension/d3008> "B1G" ;        
+
+        <http://bauhaus/structuresDeDonnees/composants/dimension/d3009> "_Z" ;        
+
+        <http://bauhaus/structuresDeDonnees/composants/dimension/d3010> "A" ;        
+
+        <http://bauhaus/structuresDeDonnees/composants/dimension/d3011> "_Z" ;        
+
+        <http://bauhaus/structuresDeDonnees/composants/dimension/d3012> "XDC" ;        
+
+        <http://bauhaus/structuresDeDonnees/composants/dimension/d3013> "V" ;        
+
+        <http://bauhaus/structuresDeDonnees/composants/dimension/d3014> "N" ;        
+
+        qb:dataSet <http://bauhaus/jeuDeDonnees/ds1002> ;        
+
+        sdmx-attribute:confStatus sdmx-code:confStatus-F ;        
+
+        sdmx-attribute:decimals sdmx-code:decimals-1 ;        
+
+        sdmx-attribute:obsStatus sdmx-code:obsStatus-A ;        
+
+        sdmx-attribute:unitMult sdmx-code:unitMult-6 ;        
+
+        sdmx-dimension:freq sdmx-code:freq-A ;        
+
+        sdmx-dimension:refArea "BE" ;        
+
+        sdmx-dimension:timePeriod "2013" ;        
+
+        sdmx-measure:obsValue "9016.9"^^xsd:float .        
+
+

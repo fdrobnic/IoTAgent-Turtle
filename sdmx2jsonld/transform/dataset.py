@@ -25,24 +25,73 @@ from sdmx2jsonld.common.commonclass import CommonClass
 from sdmx2jsonld.common.listmanagement import get_rest_data
 from sdmx2jsonld.transform.context import Context
 
+from sdmx2jsonld.sdmxdimensions.frequency import Frequency
+from sdmx2jsonld.sdmxdimensions.refarea import RefArea
+from sdmx2jsonld.sdmxdimensions.timeperiod import TimePeriod
+
+from sdmx2jsonld.sdmxattributes.observationStatus import ObsStatus
+from sdmx2jsonld.sdmxattributes.confirmationStatus import ConfStatus
+from sdmx2jsonld.sdmxattributes.timeFormat import TimeFormat
+from sdmx2jsonld.sdmxattributes.timePerCollect import TimePerCollect
+from sdmx2jsonld.sdmxattributes.decimals import Decimals
+from sdmx2jsonld.sdmxattributes.title import Title
+from sdmx2jsonld.sdmxattributes.unitmult import UnitMult
+from sdmx2jsonld.sdmxattributes.compilingorg import CompilingOrg
+from sdmx2jsonld.sdmxattributes.dataComp import DataComp
+from sdmx2jsonld.sdmxattributes.currency import Currency
+from sdmx2jsonld.sdmxattributes.dissorg import DissOrg
+
+from sdmx2jsonld.sdmxconcepts.freqconcept import FreqConcept
+from sdmx2jsonld.sdmxconcepts.cogconceptschema import CogConceptSchema
+from sdmx2jsonld.sdmxconcepts.timeperiodconcept import TimePeriodConcept
+from sdmx2jsonld.sdmxconcepts.refareaconcept import RefAreaConcept
+from sdmx2jsonld.sdmxconcepts.obsstatusconcept import ObsStatusConcept
+from sdmx2jsonld.sdmxconcepts.confstatusconcept import ConfStatusConcept
+from sdmx2jsonld.sdmxconcepts.timeformatconcept import TimeFormatConcept
+from sdmx2jsonld.sdmxconcepts.timePerCollectConcept import TimePerCollectConcept
+from sdmx2jsonld.sdmxconcepts.decimals import DecimalsConcept
+from sdmx2jsonld.sdmxconcepts.titleConcept import TitleConcept
+from sdmx2jsonld.sdmxconcepts.unitmultconcept import UnitMultConcept
+from sdmx2jsonld.sdmxconcepts.compilingorgconcept import CompilingOrgConcept
+from sdmx2jsonld.sdmxconcepts.datacompconcept import DataCompConcept
+from sdmx2jsonld.sdmxconcepts.currencyconcept import CurrencyConcept
+from sdmx2jsonld.sdmxconcepts.dissorgconcept import DissOrgConcept
+
+from sdmx2jsonld.cube.measuretype import MeasureType
+
 logger = getLogger()
 
 
 class Dataset(CommonClass):
     def __init__(self):
-        super().__init__(entity='Dataset')
+        super().__init__(entity="Dataset")
+
+        # TODO: These dimensions are not defined in the turtle file but defined in a prefix therefore at the moment
+        # we create manually their corresponding DimensionProperty entity. Should we generated from checking the prefix
+        self.list_special_components = [
+            "freq",
+            "refArea",
+            "timePeriod",
+            "obsStatus",
+            "confStatus",
+            "timeFormat",
+            "timePerCollect",
+            "decimals",
+            "title",
+            "unitMult",
+            "compilingOrg",
+            "dataComp",
+            "currency",
+            "dissOrg",
+            "measureType",
+        ]
 
         self.data = {
             "id": str(),
             "type": "Dataset",
-            "dct:title": str(),
-            "dct:identifier": str(),
-            "dct:language": {
-                "type": "Property",
-                "value": list()
-            },
-
-
+            "title": {"type": "Property", "value": str()},
+            "identifier": str(),
+            "language": {"type": "Property", "value": list()},
             #################################################
             # TODO: New ETSI CIM NGSI-LD specification 1.4.2
             # Pending to implement in the Context Broker
@@ -52,85 +101,136 @@ class Dataset(CommonClass):
             #     "LanguageMap": dict()
             # },
             #################################################
-            "dct:description": {
-                "type": "Property",
-                "value": dict()
-            },
-
-
-            "@context": dict()
+            "description": {"type": "Property", "value": dict()},
+            "@context": [
+                "https://raw.githubusercontent.com/smart-data-models/dataModel.STAT-DCAT-AP/master/context.jsonld"
+            ],
         }
 
         self.components = {
-            'qb:attribute': {
-                'entity': 'AttributeProperty',
-                'key': 'stat:attribute',
-                'value': {
-                    "stat:attribute": {
-                        "type": "Property",
-                        "value": list()
-                    }
-                }
+            "qb:attribute": {
+                "entity": "AttributeProperty",
+                "key": "attribute",
+                "value": {"attribute": {"type": "Relationship", "object": list()}},
             },
-            'qb:dimension': {
-                'entity': 'DimensionProperty',
-                'key': 'stat:dimension',
-                'value': {
-                    "stat:dimension": {
-                        "type": "Property",
-                        "value": list()
-                    }
-                }
+            "qb:dimension": {
+                "entity": "DimensionProperty",
+                "key": "dimension",
+                "value": {"dimension": {"type": "Relationship", "object": list()}},
             },
-            'qb:measure': {
-                'entity': 'Measure',
-                'key': 'stat:statUnitMeasure',
-                'value': {
-                    "stat:statUnitMeasure": {
-                        "type": "Property",
-                        "value": list()
-                    }
-                }
-            }
+            "qb:measure": {
+                "entity": "statUnitMeasure",
+                "key": "statUnitMeasure",
+                "value": {"statUnitMeasure": {"type": "Relationship", "object": list()}},
+            },
         }
 
-        self.keys = {k: k for k in self.data.keys()} | \
-                    {self.components['qb:attribute']['key']: self.components['qb:attribute']['key']} | \
-                    {self.components['qb:dimension']['key']: self.components['qb:dimension']['key']} | \
-                    {self.components['qb:measure']['key']: self.components['qb:measure']['key']}
+        self.keys = (
+            {k: k for k in self.data.keys()}
+            | {self.components["qb:attribute"]["key"]: self.components["qb:attribute"]["key"]}
+            | {self.components["qb:dimension"]["key"]: self.components["qb:dimension"]["key"]}
+            | {self.components["qb:measure"]["key"]: self.components["qb:measure"]["key"]}
+        )
 
-    def add_components(self, context, component):
+        self.sdmx_dimensions = {
+            "freq": Frequency(),
+            "refArea": RefArea(),
+            "timePeriod": TimePeriod(),
+            "measureType": MeasureType(),
+        }
+
+        self.sdmx_attributes = {
+            "obsStatus": ObsStatus(),
+            "confStatus": ConfStatus(),
+            "timeFormat": TimeFormat(),
+            "timePerCollect": TimePerCollect(),
+            "decimals": Decimals(),
+            "title": Title(),
+            "unitMult": UnitMult(),
+            "compilingOrg": CompilingOrg(),
+            "dataComp": DataComp(),
+            "dissOrg": DissOrg(),
+            "currency": Currency(),
+        }
+
+        self.sdmx_components = {
+            "DimensionProperty": self.sdmx_dimensions,
+            "AttributeProperty": self.sdmx_attributes,
+        }
+
+        self.sdmx_concepts = {
+            "freq": FreqConcept(),
+            "refArea": RefAreaConcept(),
+            "timePeriod": TimePeriodConcept(),
+            "obsStatus": ObsStatusConcept(),
+            "confStatus": ConfStatusConcept(),
+            "timeFormat": TimeFormatConcept(),
+            "timePerCollect": TimePerCollectConcept(),
+            "decimals": DecimalsConcept(),
+            "title": TitleConcept(),
+            "unitMult": UnitMultConcept(),
+            "compilingOrg": CompilingOrgConcept(),
+            "dataComp": DataCompConcept(),
+            "dissOrg": DissOrgConcept(),
+            "currency": CurrencyConcept(),
+            "measureType": None,
+        }
+
+        self.sdmx_concept_schemas = CogConceptSchema()
+
+    def add_components(self, component):
         # We need to know which kind of component we have, it should be the verb:
         # qb:attribute, qb:dimension, or qb:measure
-        list_components = ['qb:attribute', 'qb:dimension', 'qb:measure']
+        list_components = ["qb:attribute", "qb:dimension", "qb:measure"]
+
         type_component = [x for x in list_components if x in component][0]
         position = component.index(type_component) + 1
 
+        if type_component == "qb:measure":
+            logger.info(f'The qb:measure "{component[position][0]}" is not manage in statDCAT-AP')
+            new_component, new_concept, new_concept_schema = None, None, None
+        else:
+            new_component, new_concept, new_concept_schema = self.manage_components(
+                type_component=type_component, component=component, position=position
+            )
+
+        return new_component, new_concept, new_concept_schema
+
+    def manage_components(self, type_component, component, position):
+        new_component, new_concept, new_concept_schema = None, None, None
         try:
-            entity = self.components[type_component]['entity']
-            new_id = self.generate_id(entity=entity, value=component[position][0])
-            key = self.components[type_component]['key']
+            entity = self.components[type_component]["entity"]
+            name, new_id = self.generate_id(entity=entity, value=component[position][0], update_id=False)
+            key = self.components[type_component]["key"]
 
             # It is possible that the original file contains already the description
-            if new_id in self.components[type_component]['value'][key]['value']:
+            if new_id in self.components[type_component]["value"][key]["object"]:
+                logger.warning(f"The component {new_id} is duplicated and already defined in the {self.data['id']}")
+            elif name in self.list_special_components:
+                # We need to create manually the description of these dimensions, concepts, and conceptschemas
                 logger.warning(
-                    f"The component {new_id} is duplicated and already defined in the {self.data['id']}")
+                    f"The component {name} is defined probably outside of the file, "
+                    f"creating manually the {entity} entity"
+                )
+                self.components[type_component]["value"][key]["object"].append(new_id)
+                self.data = self.data | self.components[type_component]["value"]
+
+                new_component = self.sdmx_components[entity][name]
+                new_concept = self.sdmx_concepts[name]
+                new_concept_schema = self.sdmx_concept_schemas
             else:
-                self.components[type_component]['value'][key]['value'].append(new_id)
-                self.data = self.data | self.components[type_component]['value']
+                self.components[type_component]["value"][key]["object"].append(new_id)
+                self.data = self.data | self.components[type_component]["value"]
         except ValueError:
             logger.error(f"Error, it was identified a qb:ComponentSpecification with a wrong type: {type_component}")
 
-        # Simplify Context amd order keys. It is possible that we call add_component before the dataset has been created
-        # therefore we need to add the corresponding context to the dataset
-        if len(self.data['@context']) == 0:
-            self.data['@context'] = context['@context']
-
+        # Order the keys in the final json-ld
         a = Context()
-        a.set_data(data=self.data)
-        a.new_analysis()
+        a.set_data(new_data=self.data)
         a.order_context()
         self.data = a.get_data()
+
+        return new_component, new_concept, new_concept_schema
 
     def get(self):
         return self.data
@@ -140,26 +240,25 @@ class Dataset(CommonClass):
         self.__complete_label__(title=title, data=data)
 
         # Add the title
-        key = self.keys['dct:title']
-        self.data[key] = title
+        key = self.keys["title"]
+        self.data[key]["value"] = title
 
         # Add the id
-        self.data['id'] = "urn:ngsi-ld:Dataset:" + dataset_id
+        self.data["id"] = "urn:ngsi-ld:Dataset:" + dataset_id
 
         # Get the rest of the data
-        data = get_rest_data(data=data,
-                             not_allowed_keys=[
-                                 'sliceKey',
-                                 'component',
-                                 'disseminationStatus',
-                                 'validationState',
-                                 'notation',
-                                 'label'
-                             ],
-                             further_process_keys=[
-                                 'component',
-                                 'label'
-                             ])
+        data = get_rest_data(
+            data=data,
+            not_allowed_keys=[
+                "sliceKey",
+                "component",
+                "disseminationStatus",
+                "validationState",
+                "notation",
+                "label",
+            ],
+            further_process_keys=["component", "label"],
+        )
 
         # add the new data to the dataset structure
         self.patch_data(data, False)
@@ -170,29 +269,28 @@ class Dataset(CommonClass):
         else:
             # TODO: Add only those properties that are expected, if they are not know or unexpected discard and provide
             #  a logging about the property is discarded due to it is not considered in the statSCAT-AP spec.
-            [self.data.update({k: v}) for k, v in data.items()]
+            [self.data.update(self.__generate_property__(key=k, value=v)) for k, v in data.items()]
 
     def __complete_label__(self, title, data):
         try:
-            key = self.get_key(requested_key='rdfs:label')
+            key = self.get_key(requested_key="rdfs:label")
             position = data.index(key) + 1
             description = data[position]
 
-            descriptions = [x[0].replace("\"", "") for x in description]
+            descriptions = [x[0].replace('"', "") for x in description]
 
             languages = list()
             try:
                 languages = [x[1].replace("@", "").lower() for x in description]
             except IndexError:
-                logger.warning(f'The Dataset {title} has a '
-                               f'rdfs:label without language tag: {description}')
+                logger.warning(f"The Dataset {title} has a " f"rdfs:label without language tag: {description}")
 
                 aux = len(description)
                 if aux != 1:
                     logger.error(f"Dataset: there is more than 1 description ({aux}), values: {description}")
                 else:
                     # There is no language tag, we use by default 'en'
-                    languages = ['en']
+                    languages = ["en"]
                     logger.warning('Dataset: selecting default language "en"')
 
             ###############################################################################
@@ -203,14 +301,14 @@ class Dataset(CommonClass):
             #     self.data['rdfs:label']['LanguageMap'][languages[i]] = descriptions[i]
             ###############################################################################
             for i in range(0, len(languages)):
-                key = self.keys['dct:description']
-                self.data[key]['value'][languages[i]] = descriptions[i]
+                key = self.keys["description"]
+                self.data[key]["value"][languages[i]] = descriptions[i]
 
             # Complete the information of the language with the previous information
-            key = self.keys['dct:language']
-            self.data[key]['value'] = languages
+            key = self.keys["language"]
+            self.data[key]["value"] = languages
         except ValueError:
-            logger.info(f'DataStructureDefinition without rdfs:label detail: {title}')
+            logger.info(f"DataStructureDefinition without rdfs:label detail: {title}")
 
     def get_key(self, requested_key):
         try:

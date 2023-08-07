@@ -25,11 +25,11 @@ from sdmx2jsonld.transform.property import Property
 
 class Attribute(Property):
     def __init__(self):
-        super().__init__(entity='AttributeProperty')
-        self.data['type'] = 'AttributeProperty'
+        super().__init__(entity="AttributeProperty")
+        self.data["type"] = "AttributeProperty"
 
     def add_data(self, attribute_id, data):
-        super().add_data(id=id, data=data)
+        super().add_data(property_id=attribute_id, data=data)
 
         # Add the id
-        self.data['id'] = "urn:ngsi-ld:AttributeProperty:" + attribute_id
+        self.data["id"] = "urn:ngsi-ld:AttributeProperty:" + attribute_id

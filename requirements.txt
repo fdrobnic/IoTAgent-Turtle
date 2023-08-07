@@ -1,13 +1,13 @@
-# python3.10, virtualenv -ppython3.10 .venv
-lark==1.1.5
+# python3.11, virtualenv -ppython3.11 .venv
+lark==1.1.7
 secure==0.3.0
 docopt==0.6.2
 schema==0.7.5
 hi-dateinfer==0.4.6
-fastapi==0.98.0
-uvicorn==0.22.0
+fastapi==0.100.0
+uvicorn==0.23.1
 python-multipart==0.0.6
 loguru==0.7.0
 requests==2.31.0
-rdflib>=6.2,<6.4
-
+rdflib==6.3.2
+python-dateutil==2.8.2

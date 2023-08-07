@@ -28,19 +28,21 @@ from json import dumps
 from logging import getLogger
 from sdmx2jsonld.exceptions import UnexpectedEOF, UnexpectedInput, UnexpectedToken
 from sdmx2jsonld.common.rdf import turtle_terse
+from sdmx2jsonld.common.config import GRAMMARFILE
+from sdmx2jsonld.transform.distribution import Distribution
 
 
 logger = getLogger(__name__)
-__version__ = "0.5.0"
+__version__ = "1.0.0"
 
 
 class Parser:
     def __init__(self):
         # Open the grammar file
-        with open("./sdmx2jsonld/grammar/grammar.lark") as f:
+        with open(GRAMMARFILE) as f:
             grammar = f.read()
 
-        self.parser = Lark(grammar, start='start', parser='lalr')
+        self.parser = Lark(grammar, start="start", parser="lalr")
 
     def parsing(self, content: TextIOBase, out: bool = False):
         """
@@ -61,11 +63,15 @@ class Parser:
     def parsing_file(self, content: TextIOWrapper, out: bool):
         transform = TreeToJson()
 
-        content = content.read()
-        content = turtle_terse(rdf_content=content)
+        with content as f:
+            data = f.read()
+
+        data = turtle_terse(rdf_content=data)
+        with open("./logs/final.ttl", "w") as outfile:
+            outfile.write(data)
 
         try:
-            tree = self.parser.parse(content)
+            tree = self.parser.parse(data)
         except UnexpectedToken as err:
             raise err
         except UnexpectedInput as err:
@@ -77,16 +83,30 @@ class Parser:
 
         if out:
             # Save the generated content into files
-            logger.info('Save the generated content into files')
+            logger.info("Save the generated content into files")
             transform.save()
         elif content is not None:
             print()
-            pprint(transform.get_catalogue())
-            pprint(transform.get_dataset())
-            [pprint(x.get()) for x in transform.get_dimensions()]
-            [pprint(x.get()) for x in transform.get_attributes()]
-            [pprint(x.get()) for x in transform.get_conceptSchemas()]
-            [pprint(x.get()) for x in transform.get_conceptLists()]
+
+            catalogue = transform.get_catalogue()
+            pprint(catalogue)
+            ds = transform.get_dataset()
+            if ds is not None:
+                self.__check_pprint__(transform.get_dataset())
+            [pprint(x.get()) for x in transform.get_dimensions()]  # type: ignore[func-returns-value]
+            [pprint(x.get()) for x in transform.get_attributes()]  # type: ignore[func-returns-value]
+            [pprint(x.get()) for x in transform.get_concept_schemas()]  # type: ignore[func-returns-value]
+            [pprint(x.get()) for x in transform.get_concept_lists()]  # type: ignore[func-returns-value]
+
+            observations = transform.entity_type.get_observation()
+            if len(observations) != 0:
+                [pprint(x.get()) for x in observations]  # type: ignore[func-returns-value]
+
+                # If we have several observations, we need to generate the DCAT-AP:Distribution class
+                distribution = Distribution()
+                distribution.generate_data(catalogue=transform.entity_type.catalogue)
+
+                pprint(distribution.get())
 
     def parsing_string(self, content: StringIO):
         transform = TreeToJson()
@@ -99,12 +119,32 @@ class Parser:
 
         # Serializing json payload
         result = list()
-        result.append(transform.get_catalogue())
-        result.append(transform.get_dataset())
-        [result.append(x.get()) for x in transform.get_dimensions()]
-        [result.append(x.get()) for x in transform.get_attributes()]
-        [result.append(x.get()) for x in transform.get_conceptSchemas()]
-        [result.append(x.get()) for x in transform.get_conceptLists()]
+
+        catalogue = transform.get_catalogue()
+        result.append(catalogue)
+
+        ds = transform.get_dataset()
+        if ds is not None:
+            result.append(ds)
+
+        dimensions = transform.get_dimensions()
+        [result.append(x.get()) for x in dimensions]  # type: ignore[func-returns-value]
+
+        [result.append(x.get()) for x in transform.get_attributes()]  # type: ignore[func-returns-value]
+
+        [result.append(x.get()) for x in transform.get_concept_schemas()]  # type: ignore[func-returns-value]
+
+        [result.append(x.get()) for x in transform.get_concept_lists()]  # type: ignore[func-returns-value]
+
+        observations = transform.entity_type.get_observation()
+        if len(observations) != 0:
+            [result.append(x.get()) for x in observations]  # type: ignore[func-returns-value]
+
+            # If we have several observations, we need to generate the DCAT-AP:Distribution class
+            distribution = Distribution()
+            # jicg. distribution.generate_data(catalogue=catalogue)
+            distribution.generate_data(catalogue=transform.entity_type.catalogue)
+            result.append(distribution.get())
 
         json_object = dumps(result, indent=4, ensure_ascii=False)
 
@@ -112,3 +152,8 @@ class Parser:
             outfile.write(json_object)
 
         return json_object
+
+    @staticmethod
+    def __check_pprint__(data):
+        if data is not None:
+            pprint(data)

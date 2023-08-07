@@ -1,0 +1,34 @@
+version: "3.8"
+services:
+  orion-ld:
+    image: fiware/orion-ld
+    hostname: orion-ld
+    container_name: orion-ld
+    expose:
+      - 1026
+    ports:
+      - 1026:1026
+    depends_on:
+      - fiware-orion-ld-mongo-db
+    command: -dbhost fiware-orion-ld-mongo-db -logLevel DEBUG -experimental
+
+  fiware-orion-ld-mongo-db:
+    image: mongo:5.0
+    hostname: mongo-db
+    networks:
+      - default
+    command: --nojournal
+    volumes:
+      - /data/docker/orion-ld/mongodb:/data
+
+  iotagent-turtle:
+    image: iotagent-turtle:latest
+    hostname: ioagent-turtle
+    container_name: iotagent-turtle
+    expose:
+      - 5000
+    ports:
+      - 5000:5000
+    networks:
+      - default
+

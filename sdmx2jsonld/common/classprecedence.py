@@ -22,15 +22,15 @@
 
 
 entities = {
-    'qb:DataStructureDefinition': 'Dataset',
-    'qb:ComponentSpecification': 'Component',
-    'qb:AttributeProperty': 'Attribute',
-    'qb:DimensionProperty': 'Dimension',
-    'qb:CodedProperty': 'Dimension',
-    'rdfs:Class': 'Class',
-    'owl:Class': 'Class',
-    'skos:ConceptScheme': 'ConceptScheme',
-    'skos:Concept': 'Range'
+    "qb:DataStructureDefinition": "Dataset",
+    "qb:ComponentSpecification": "Component",
+    "qb:AttributeProperty": "Attribute",
+    "qb:DimensionProperty": "Dimension",
+    "qb:CodedProperty": "Dimension",
+    "rdfs:Class": "Class",
+    "owl:Class": "Class",
+    "skos:ConceptScheme": "ConceptScheme",
+    "skos:Concept": "Range",
 }
 
 
@@ -47,7 +47,7 @@ class Precedence:
             "skos:Concept": 40,
             "rdfs:Class": 20,
             "owl:Class": 20,
-            "qb:SliceKey": 10
+            "qb:SliceKey": 10,
         }
 
     def get_value(self, aclass: str) -> int:
@@ -60,25 +60,24 @@ class Precedence:
         classes_values = list(map(lambda x: self.get_value(x), data))
 
         # We need to check if all element of the list are the value 250 because could not be possible to have at
-        # the same time a DimensionProperty and AttributeProperty, this is an ERROR and we need to report.
+        # the same time a DimensionProperty and AttributeProperty, this is an ERROR therefore we need to report it.
         result = all(element == 250 for element in classes_values) and len(data) > 1
         if result is True:
-            raise ClassesPrecedencePropertyError(data)
+            raise ClassPrecedencePropertyError(data)
 
         # In case that we have several values identical of type Class, we need to report a WARNING message because maybe
-        # it is not needed multitype in that case.
+        # it is not needed multi-type in that case.
         result = all(element == 20 for element in classes_values) and len(data) > 1
         if result is True:
-            raise ClassesPrecedenceClassError(data)
+            raise ClassPrecedenceClassError(data)
 
-        # In other chase, we return the max value of the list
-        aux = max(classes_values)
-        aux = data[classes_values.index(aux)]
+        # In other case, we return the max value of the list
+        aux = data[classes_values.index(max(classes_values))]
 
         return aux
 
 
-class ClassesPrecedenceError(Exception):
+class ClassPrecedenceError(Exception):
     """Base class for other exceptions"""
 
     def __init__(self, data, message):
@@ -86,15 +85,16 @@ class ClassesPrecedenceError(Exception):
         self.data = data
 
     def __str__(self):
-        return f'{self.data} -> {self.message}'
+        return f"{self.data} -> {self.message}"
 
 
-class ClassesPrecedencePropertyError(ClassesPrecedenceError):
+class ClassPrecedencePropertyError(ClassPrecedenceError):
     """Raised when the input value is too small"""
-    """Exception raised for errors in the input salary.
+
+    """Exception raised for errors in the input data.
 
     Attributes:
-        salary -- input salary which caused the error
+        data -- input data which caused the error
         message -- explanation of the error
     """
 
@@ -102,12 +102,13 @@ class ClassesPrecedencePropertyError(ClassesPrecedenceError):
         super().__init__(data=data, message=message)
 
 
-class ClassesPrecedenceClassError(ClassesPrecedenceError):
+class ClassPrecedenceClassError(ClassPrecedenceError):
     """Raised when the input value is too large"""
-    """Exception raised for errors in the input salary.
+
+    """Exception raised for errors in the input data.
 
     Attributes:
-        salary -- input salary which caused the error
+        data -- input data which caused the error
         message -- explanation of the error
     """
 
@@ -115,6 +116,6 @@ class ClassesPrecedenceClassError(ClassesPrecedenceError):
         super().__init__(data=data, message=message)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     pre = Precedence()
-    obtained = pre.precedence(['qb:DataStructureDefinition'])
+    obtained = pre.precedence(["qb:DataStructureDefinition"])

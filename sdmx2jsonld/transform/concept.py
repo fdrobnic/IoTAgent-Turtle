@@ -30,24 +30,14 @@ logger = getLogger()
 
 class Concept(CommonClass):
     def __init__(self):
-        super().__init__(entity='Concept')
+        super().__init__(entity="Concept")
 
         self.data = {
             "id": str(),
             "type": "Concept",
-            "dct:language": {
-                "type": "Property",
-                "value": list()
-            },
-            "skos:inScheme": {
-                "type": "Relationship",
-                "value": str()
-            },
-            "rdfs:subClassOf": {
-                "type": "Property",
-                "value": str()
-            },
-
+            "language": {"type": "Property", "value": list()},
+            "inScheme": {"type": "Relationship", "object": str()},
+            "rdfs:subClassOf": {"type": "Property", "value": str()},
             #################################################
             # TODO: New ETSI CIM NGSI-LD specification 1.4.2
             # Pending to implement in the Context Broker
@@ -57,16 +47,14 @@ class Concept(CommonClass):
             #     "LanguageMap": dict()
             # },
             #################################################
-            "skos:prefLabel": {
-                "type": "Property",
-                "value": dict()
-            },
-
-
-            "@context": dict()
+            "prefLabel": {"type": "Property", "value": dict()},
+            "@context": [
+                "https://raw.githubusercontent.com/smart-data-models/dataModel.STAT-DCAT-AP/master/context.jsonld"
+            ],
         }
 
         self.concept_id = str()
+        self.keys = {k: k for k in self.data.keys()}
 
     def add_data(self, concept_id, data):
         # TODO: We have to control that data include the indexes that we want to search
@@ -76,33 +64,30 @@ class Concept(CommonClass):
         self.concept_id = concept_id
 
         try:
-            position = data.index('skos:prefLabel') + 1
+            position = data.index("skos:prefLabel") + 1
         except ValueError:
             # We could not find skos:prefLabel, try to find rdfs:label
-            logger.warning(f'The Concept {concept_id} does not contain skos:prefLabel but rdfs:label. We use its '
-                           f'content to fill in the skos:prefLabel property')
-            try:
-                position = data.index('rdfs:label') + 1
-            except ValueError:
-                # We could not find rdfs:label
-                logger.warning(f'The Concept {concept_id} does not contain skos:prefLabel neither rdfs:label.')
+            position = data.index("rdfs:label") + 1
+            logger.warning(
+                f"The Concept {concept_id} does not contain skos:prefLabel but rdfs:label. We use its "
+                f"content to fill in the skos:prefLabel property"
+            )
 
         description = data[position]
-        descriptions = [x[0].replace("\"", "") for x in description]
+        descriptions = [x[0].replace('"', "") for x in description]
 
         languages = list()
         try:
             languages = [x[1].replace("@", "").lower() for x in description]
         except IndexError:
-            logger.warning(f'The Concept {concept_id} has a '
-                           f'skos:prefLabel without language tag: {description}')
+            logger.warning(f"The Concept {concept_id} has a " f"skos:prefLabel without language tag: {description}")
 
             aux = len(description)
             if aux != 1:
                 logger.error(f"Concept: there is more than 1 description ({aux}), values: {description}")
             else:
                 # There is no language tag, we use by default 'en'
-                languages = ['en']
+                languages = ["en"]
                 logger.warning('Concept: selecting default language "en"')
 
         # Complete the skos:prefLabel
@@ -114,15 +99,14 @@ class Concept(CommonClass):
         #     self.data['skos:prefLabel']['LanguageMap'][languages[i]] = descriptions[i]
         ###############################################################################
         for i in range(0, len(languages)):
-            self.data['skos:prefLabel']['value'][languages[i]] = descriptions[i]
+            self.data["prefLabel"]["value"][languages[i]] = descriptions[i]
 
         # Complete the information of the language with the previous information
-        #key = self.keys['dct:language']
-        key = 'dct:language'
-        self.data[key]['value'] = languages
+        key = self.keys["language"]
+        self.data[key]["value"] = languages
 
         # Add the id
-        self.data['id'] = "urn:ngsi-ld:Concept:" + concept_id
+        self.data["id"] = "urn:ngsi-ld:Concept:" + concept_id
 
         # rdfs:seeAlso
         self.need_add_in_scheme(data=data)
@@ -133,10 +117,9 @@ class Concept(CommonClass):
         # skos:notation
         self.need_add_notation(data=data)
 
-        # Simplify Context and order keys
+        # Order the keys in the final json-ld
         a = Context()
-        a.set_data(data=self.data)
-        a.new_analysis()
+        a.set_data(new_data=self.data)
         a.order_context()
         self.data = a.get_data()
 
@@ -144,48 +127,51 @@ class Concept(CommonClass):
         return self.data
 
     def get_id(self):
-        return self.data['id']
+        return self.data["id"]
 
     def need_add_subclass(self, data):
         try:
-            position = data.index('rdfs:subClassOf') + 1
-            self.data['rdfs:subClassOf']['value'] = data[position][0]
+            position = data.index("rdfs:subClassOf") + 1
+            self.data["rdfs:subClassOf"]["value"] = data[position][0]
         except ValueError:
-            logger.info(f'The Concept {self.concept_id} has no rdfs:subClassOf property, deleting the key in the data')
+            logger.info(f"The Concept {self.concept_id} has no rdfs:subClassOf property, deleting the key in the data")
 
             # We delete the "rdfs:subClassOf" property from the final structure
-            self.data.pop('rdfs:subClassOf')
+            self.data.pop("rdfs:subClassOf")
 
     def need_add_in_scheme(self, data):
         position = 0
 
         try:
-            position = data.index('rdfs:seeAlso') + 1
+            position = data.index("rdfs:seeAlso") + 1
         except ValueError:
             # We will try to find the skos:inScheme
             try:
-                position = data.index('skos:inScheme') + 1
+                position = data.index("skos:inScheme") + 1
             except ValueError:
-                logger.info(f'The Concept {self.concept_id} has neither rdfs:seeAlso or skos:inScheme properties, '
-                            f'deleting the key in the data')
+                logger.info(
+                    f"The Concept {self.concept_id} has neither rdfs:seeAlso or skos:inScheme properties, "
+                    f"deleting the key in the data"
+                )
 
                 # We delete the "skos:inScheme" property from the final structure
-                self.data.pop('skos:inScheme')
-                position = 0
+                self.data.pop("skos:inScheme")
 
-        if position > 0:
-            parser = RegParser()
-            concept_schema = data[position][0]
-            concept_schema = "urn:ngsi-ld:ConceptSchema:" + parser.obtain_id(concept_schema)
-            self.data['skos:inScheme']['value'] = concept_schema
+        parser = RegParser()
+        concept_schema = data[position][0]
+        concept_schema = "urn:ngsi-ld:ConceptSchema:" + parser.obtain_id(concept_schema)
+        if self.data["inScheme"]["type"] == "Relationship":
+            self.data["inScheme"]["object"] = concept_schema
+        else:
+            self.data["inScheme"]["value"] = concept_schema
 
     def need_add_notation(self, data):
         try:
-            position = data.index('skos:notation') + 1
+            position = data.index("skos:notation") + 1
 
-            self.data['skos:notation'] = {
-                    'type': 'Property',
-                    'value': data[position][0][0].replace("\"", "")
+            self.data["notation"] = {
+                "type": "Property",
+                "value": data[position][0][0].replace('"', ""),
             }
         except ValueError:
-            logger.info(f'The Concept {self.concept_id} has no skos:notation property')
+            logger.info(f"The Concept {self.concept_id} has no skos:notation property")

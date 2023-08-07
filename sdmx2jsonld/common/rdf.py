@@ -23,6 +23,10 @@ from rdflib import Graph
 
 
 def turtle_terse(rdf_content):
+    """
+    Function which receives a string in formatted with RDF, dialect turtle, parses it and returns the  same data
+    parsed in another string. The incoming data in the parameter is equivalent to the returned data.
+    """
     # Create a Graph
     g2 = Graph()
 

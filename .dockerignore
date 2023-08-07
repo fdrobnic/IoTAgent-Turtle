@@ -1,5 +1,5 @@
 .venv/
-doc/
+docs/
 examples/
 test/
 *.jsonld
@@ -8,7 +8,6 @@ tox.ini
 test-requirements.txt
 README.md
 .stestr.conf
-.pre-commit-config.yaml
 .gitignore
 logs/access.log
 .git/

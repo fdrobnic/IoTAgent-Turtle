@@ -1,63 +1,57 @@
-FROM  python:3.9-alpine@sha256:e80214a705236091ee3821a7e512e80bd3337b50a95392a36b9a40b8fc0ea183  as  build
+FROM alpine/git as git-clone
+
+ARG PROJECT=flopezag
+ARG COMPONENT=IoTAgent-Turtle
+ARG BRANCH=develop
+ARG INSTALLATION_PATH=/opt/$COMPONENT
+
+RUN mkdir -p $INSTALLATION_PATH
+RUN git clone https://github.com/$PROJECT/$COMPONENT --branch $BRANCH $INSTALLATION_PATH
+
+
+## Install PIP Requirements
+FROM python:3.11-alpine as pip-requirements
+
+ARG PROJECT=flopezag
+ARG COMPONENT=IoTAgent-Turtle
+ARG INSTALLATION_PATH=/opt/$COMPONENT
+
+RUN mkdir -p $INSTALLATION_PATH
+COPY --from=git-clone $INSTALLATION_PATH/requirements.txt /requirements.txt
+RUN pip install --root-user-action=ignore --prefix=$INSTALLATION_PATH -r /requirements.txt
+
+
+FROM python:3.11-alpine as final
 
 LABEL "maintainer"="FIWARE Foundation e.V."
-LABEL "description"="An Internet of Things Agent for the RDF DataQube Turtle format. This IoT Agent is designed to be a bridge between ISOXML/ADAPT and the ETSI NGSI-LD interface of a FIWARE Context Broker."
-LABEL "name"="iotagent-turtle"
-LABEL "summary"="IoT Agent for the DataQube representation in RDF Turtle format used in statistical environments"
+LABEL "description"="An Internet of Things Agent for the RDF Turtle of SDMX DataQube format. This IoT Agent is designed to be a bridge between SDMX statistical metadata representation in RDF Turtle and ETSI NGSI-LD in JSON-LD format representation to be integrated with FIWARE components."
 
+LABEL "name"="iotagent-turtle"
+LABEL "summary"="IoT Agent for the DataQube (SDMX) representation in RDF Turtle format used in statistical environments."
 LABEL "org.opencontainers.image.authors"="fernando.lopez@fiware.org"
-LABEL "org.opencontainers.image.documentation"=""
+LABEL "org.opencontainers.image.documentation"="https://github.com/flopezag/IoTAgent-Turtle/tree/master/doc"
 LABEL "org.opencontainers.image.vendor"="FIWARE Foundation e.V."
 LABEL "org.opencontainers.image.licenses"="Apache2.0"
 LABEL "org.opencontainers.image.title"="iotagent-turtle"
-LABEL "org.opencontainers.image.description"="An Internet of Things Agent for the RDF DataQube Turtle format. This IoT Agent is designed to be a bridge between ISOXML/ADAPT and the ETSI NGSI-LD interface of a FIWARE Context Broker."
+LABEL "org.opencontainers.image.description"="An Internet of Things Agent for the RDF Turtle of SDMX DataQube format. This IoT Agent is designed to be a bridge between SDMX statistical metadata representation in RDF Turtle and ETSI NGSI-LD in JSON-LD format representation to be integrated with FIWARE components."
 LABEL "org.opencontainers.image.source"="https://github.com/flopezag/IoTAgent-Turtle"
 LABEL "org.opencontainers.image.version"="0.1.0"
-LABEL "org.python.version"="python:3.9"
+LABEL "org.python.version"="python:3.11"
 
-RUN  apk  update
-# RUN apt-get install -y --no-install-recommends \
-# 	build-essential gcc
-
-WORKDIR  /usr/app
-RUN  python  -m  venv  /usr/app/venv
-ENV  PATH="/usr/app/venv/bin:$PATH"
-
-COPY  requirements.txt  .
-RUN  pip  install  --no-cache-dir  --upgrade  -r  requirements.txt
-
-FROM python:3.9-alpine@sha256:e80214a705236091ee3821a7e512e80bd3337b50a95392a36b9a40b8fc0ea183
+ARG PROJECT=flopezag
+ARG COMPONENT=IoTAgent-Turtle
+ARG INSTALLATION_PATH=/opt/$COMPONENT
 
 ENV PORT=${IOTA_PORT:-5000}
 
-LABEL "maintainer"="FIWARE Foundation e.V."
-LABEL "description"="An Internet of Things Agent for the RDF DataQube Turtle format. This IoT Agent is designed to be a bridge between ISOXML/ADAPT and the ETSI NGSI-LD interface of a FIWARE Context Broker."
-LABEL "name"="iotagent-turtle"
-LABEL "summary"="IoT Agent for the DataQube representation in RDF Turtle format used in statistical environments"
+RUN mkdir -p $INSTALLATION_PATH
 
-LABEL "org.opencontainers.image.authors"="fernando.lopez@fiware.org"
-LABEL "org.opencontainers.image.documentation"=""
-LABEL "org.opencontainers.image.vendor"="FIWARE Foundation e.V."
-LABEL "org.opencontainers.image.licenses"="Apache2.0"
-LABEL "org.opencontainers.image.title"="iotagent-turtle"
-LABEL "org.opencontainers.image.description"="An Internet of Things Agent for the RDF DataQube Turtle format. This IoT Agent is designed to be a bridge between ISOXML/ADAPT and the ETSI NGSI-LD interface of a FIWARE Context Broker."
-LABEL "org.opencontainers.image.source"="https://github.com/flopezag/IoTAgent-Turtle"
-LABEL "org.opencontainers.image.version"="0.1.0"
-LABEL "org.python.version"="python:3.9"
+COPY --from=git-clone $INSTALLATION_PATH $INSTALLATION_PATH
+COPY --from=pip-requirements $INSTALLATION_PATH /usr/local
 
-RUN  addgroup  -g  99  python  &&  \
-     adduser   -S  -u  999  -g  python  python
-
-RUN  mkdir  /usr/app  &&  chown  python:python  /usr/app
-WORKDIR  /usr/app
-
-COPY  --chown=python:python  --from=build  /usr/app/venv  ./venv
-COPY  --chown=python:python  .  .
-
-USER 999
-
-ENV PATH="/usr/app/venv/bin:$PATH"
-CMD ["python", "agent.py", "server", "--host", "0.0.0.0", "--port", "5000"]
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 CMD curl -f https://localhost:${PORT}/version
+COPY config.json $INSTALLATION_PATH/common/config.json
+WORKDIR $INSTALLATION_PATH
 
 EXPOSE ${PORT}
+ENTRYPOINT /usr/local/bin/python agent.py server --host 0.0.0.0 --port ${PORT}
+

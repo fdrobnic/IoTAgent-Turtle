@@ -19,19 +19,23 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 ##
-from hidateinfer import infer
+from hidateinfer import infer  # type: ignore[import]
 from datetime import datetime, timezone
 from re import compile, sub
+from dateutil import parser
+import pytz
+from sdmx2jsonld.common.tzinfos import whois_timezone_info
 
 
 class DataTypeConversion:
     def __init__(self):
         self.types = {
-            'xsd:dateTime': 'stodt',
-            'xsd:int': 'stoi',
-            'xsd:boolean': 'stob',
-            'xsd:anyURI': 'stou'
+            "xsd:dateTime": "stoutc",
+            "xsd:int": "stoi",
+            "xsd:boolean": "stob",
+            "xsd:float": "stof",
         }
+
         self.regex_12hour = compile(r"(^.*T%)(I)(.*)$")
         self.regex_microseconds = compile(r"^(.*T%.*:%S\.)(%H)*$")
         self.regex_microseconds2 = compile(r"^(.*T%.*:%S\.)(%y)*$")
@@ -39,107 +43,131 @@ class DataTypeConversion:
         self.regex_false_date2 = compile(r"^%Y-%d-%m(.*)%f")
 
     def correct_datatype_format(self, format_dt: str, hour24: bool = True):
-
         if hour24:
             format_dt = sub(self.regex_12hour, r"\1H\3", format_dt)
 
-        format_dt = sub(self.regex_microseconds,  r"\1%f", format_dt)
+        format_dt = sub(self.regex_microseconds, r"\1%f", format_dt)
         format_dt = sub(self.regex_microseconds2, r"\1%f", format_dt)
 
-        format_dt = sub(self.regex_false_date,  r"%Y-%m-%d\1%f", format_dt)
+        format_dt = sub(self.regex_false_date, r"%Y-%m-%d\1%f", format_dt)
         format_dt = sub(self.regex_false_date2, r"%Y-%m-%d\1%f", format_dt)
 
         return format_dt
 
     def convert(self, data, datatype):
+        def stoutc(value):
+            """
+            Converts a date in string format to UTC date using
+            """
+            dt = parser.parse(value, tzinfos=whois_timezone_info)
+            dt = dt.astimezone(pytz.UTC)
+            return dt.replace(tzinfo=timezone.utc).isoformat()
+
         def stodt(value):
-            # print(f'toDateTime function, arguments {value}')
             if isinstance(value, str):
                 result = infer([value])
             elif isinstance(value, list):
                 result = infer(value)
             else:
-                raise Exception(f'Invalid format received: {type(value)}')
+                raise Exception(f"Invalid format received: {type(value)}")
 
             result = self.correct_datatype_format(result)
-
-            # print(f'format {result}')
             result = datetime.strptime(value, result).replace(tzinfo=timezone.utc).isoformat()
-            # print(f'result {result}')
+
             return result
 
         def stoi(value):
             """
-               Converts 'something' to int. Raises exception for invalid formats
+            Converts 'something' to int. Raises exception for invalid formats
             """
             if isinstance(value, str):
-                result = value.replace('"', '')
+                result = value.replace('"', "")
             elif isinstance(value, int):
                 result = value
             else:
-                raise Exception(f'Invalid format received: {type(value)}')
+                raise Exception(f"Invalid format received: {type(value)}")
 
             return int(result)
 
+        def stof(value):
+            """
+            Converts 'something' to float. Raises exception for invalid formats
+            """
+            if isinstance(value, str):
+                result = value.replace('"', "")
+            elif isinstance(value, float):
+                result = value
+            else:
+                raise Exception(f"Invalid format received: {type(value)}")
+
+            return float(result)
+
         def stob(value):
             """
-               Converts 'something' to boolean. Raises exception for invalid formats
-                   Possible True  values: 1, True, "1", "TRue", "yes", "y", "t"
-                   Possible False values: 0, False, None, [], {}, "", "0", "faLse", "no", "n", "f", 0.0, ...
+            Converts 'something' to boolean. Raises exception for invalid formats
+                Possible True  values: 1, True, "1", "TRue", "yes", "y", "t"
+                Possible False values: 0, False, None, [], {}, "", "0", "faLse", "no", "n", "f", 0.0, ...
             """
-            print(f'toBool function, arguments {value}')
-
             if str(value).lower() in ("yes", "y", "true", "t", "1"):
                 return True
 
-            if str(value).lower() in ("no", "n", "false", "f", "0", "0.0", "", "none", "[]", "{}"):
+            if str(value).lower() in (
+                "no",
+                "n",
+                "false",
+                "f",
+                "0",
+                "0.0",
+                "",
+                "none",
+                "[]",
+                "{}",
+            ):
                 return False
 
             # logger.error(f'Invalid value for boolean conversion: {str(value)}')
-            raise Exception(f'Invalid value for boolean conversion: {str(value)}')
-
-        def stou(value):
-            """
-               Converts 'something' to URI. Raises exception for invalid formats
-            """
-            if isinstance(value, str):
-                result = value.replace('"', '')
-            else:
-                raise Exception(f'Invalid format received: {type(value)}')
-
-            return result
+            raise Exception(f"Invalid value for boolean conversion: {str(value)}")
 
         try:
-            function = self.types[datatype] + '(value=' + data + ')'
+            # jicg - function = self.types[datatype] + f'(value="{data}")'
+            function = self.types[datatype] + "(value=" + data + ")"
             return eval(function)
         except KeyError:
             # logger.error(f'Datatype not defined: {datatype}')
-            print(f'Datatype not defined: {datatype}')
-            raise Exception(f'Datatype not defined: {datatype}')
+            print(f"Datatype not defined: {datatype}")
+            raise Exception(f"Datatype not defined: {datatype}")
         except NameError:
             # logger.error(f"name '{data}' is not defined")
             print(f"name '{data}' is not defined")
             raise Exception(f"name '{data}' is not defined")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     from lark import Token
 
-    data1 = ['"2022-01-15T08:00:00.000"', Token('FORMATCONNECTOR', '^^'), 'xsd:dateTime']
-    data2 = ['"2"', Token('FORMATCONNECTOR', '^^'), 'xsd:int']
-    data22 = ['2', Token('FORMATCONNECTOR', '^^'), 'xsd:int']
-    data23 = ['asdfs', Token('FORMATCONNECTOR', '^^'), 'xsd:int']
-    data3 = ['"true"', Token('FORMATCONNECTOR', '^^'), 'xsd:boolean']
-    data4 = ['"fake"', Token('FORMATCONNECTOR', '^^'), 'otraCosa']
-    data5 = ['"2022-01-10T09:00:00.000"', Token('FORMATCONNECTOR', '^^'), 'xsd:dateTime']
-    data6 = ['"2021-07-01T11:50:37.3"', Token('FORMATCONNECTOR', '^^'), 'xsd:dateTime']
-    data7 = ['"2021-09-28T15:31:24.05"', Token('FORMATCONNECTOR', '^^'), 'xsd:dateTime']
+    data1 = [
+        '"2022-01-15T08:00:00.000"',
+        Token("FORMATCONNECTOR", "^^"),
+        "xsd:dateTime",
+    ]
+    data2 = ['"2"', Token("FORMATCONNECTOR", "^^"), "xsd:int"]
+    data22 = ["2", Token("FORMATCONNECTOR", "^^"), "xsd:int"]
+    data23 = ["asdfs", Token("FORMATCONNECTOR", "^^"), "xsd:int"]
+    data3 = ['"true"', Token("FORMATCONNECTOR", "^^"), "xsd:boolean"]
+    data4 = ['"fake"', Token("FORMATCONNECTOR", "^^"), "otraCosa"]
+    data5 = [
+        '"2022-01-10T09:00:00.000"',
+        Token("FORMATCONNECTOR", "^^"),
+        "xsd:dateTime",
+    ]
+    data6 = ['"2021-07-01T11:50:37.3"', Token("FORMATCONNECTOR", "^^"), "xsd:dateTime"]
+    data7 = ['"2021-09-28T15:31:24.05"', Token("FORMATCONNECTOR", "^^"), "xsd:dateTime"]
 
-    print(infer(['Mon Jan 13 09:52:52 MST 2014']))
+    print(infer(["Mon Jan 13 09:52:52 MST 2014"]))
     print(infer([data1[0]]))
     print()
 
-    print(infer(['2022-01-15T08:00:00']))
+    print(infer(["2022-01-15T08:00:00"]))
     print(infer([data1[0]]))
     print()
 
@@ -161,7 +189,7 @@ if __name__ == '__main__':
     try:
         print(dataConversionType.convert(data4[0], data4[2]))
     except Exception:
-        print('Exception')
+        print("Exception")
 
     # Convert datetime generated into UTC format: 2021-12-21T16:18:55Z or 2021-12-21T16:18:55+00:00, ISO8601
 
@@ -170,3 +198,6 @@ if __name__ == '__main__':
     print(dataConversionType.convert(data6[0], data6[2]))
 
     print(dataConversionType.convert(data7[0], data7[2]))
+
+    data101 = ['"3016.9"', Token("FORMATCONNECTOR", "^^"), "xsd:float"]
+    print(dataConversionType.convert(data101[0], data101[2]))

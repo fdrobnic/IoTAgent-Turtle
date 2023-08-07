@@ -47,32 +47,35 @@ Options:
 from docopt import docopt
 from os.path import basename
 from sys import argv
-from schema import Schema, And, Or, Use, SchemaError
+from schema import Schema, And, Or, Use, SchemaError  # type: ignore
 
 
-__version__ = "0.5.0"
+__version__ = "1.0.0"
 __author__ = "fla"
 
 
 def parse_cli() -> dict:
     if len(argv) == 1:
-        argv.append('-h')
+        argv.append("-h")
 
-    version = f'IoTAgent-Turtle version {__version__}'
+    version = f"IoTAgent-Turtle version {__version__}"
 
     args = docopt(__doc__.format(proc=basename(argv[0])), version=version)
 
     schema = Schema(
         {
-            '--help': bool,
-            '--input': Or(None, Use(open, error='--input FILE, FILE should be readable')),
-            '--output': bool,
-            '--port': Or(None, And(Use(int), lambda n: 1 < n < 65535),
-                         error='--port N, N should be integer 1 < N < 65535'),
-            '--host': Or(None, str, error='--host HOST should be a string'),
-            '--version': bool,
-            'run': bool,
-            'server': bool
+            "--help": bool,
+            "--input": Or(None, Use(open, error="--input FILE, FILE should be readable")),
+            "--output": bool,
+            "--port": Or(
+                None,
+                And(Use(int), lambda n: 1 < n < 65535),
+                error="--port N, N should be integer 1 < N < 65535",
+            ),
+            "--host": Or(None, str, error="--host HOST should be a string"),
+            "--version": bool,
+            "run": bool,
+            "server": bool,
         }
     )
 
@@ -84,5 +87,5 @@ def parse_cli() -> dict:
     return args
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     print(parse_cli())
