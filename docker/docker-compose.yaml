@@ -13,7 +13,7 @@ services:
     command: -dbhost fiware-orion-ld-mongo-db -logLevel DEBUG -experimental
 
   fiware-orion-ld-mongo-db:
-    image: mongo:5.0
+    image: mongo:${MONGO_DB_VERSION}
     hostname: mongo-db
     networks:
       - default
