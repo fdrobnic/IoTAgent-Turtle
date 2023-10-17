@@ -100,7 +100,7 @@ async def set_secure_headers(request, call_next):
 
 @application.get("/version", status_code=status.HTTP_200_OK)
 def getversion(request: Request):
-    request.app.logger.info("Request version information")
+    #request.app.logger.info("Request version information")
     data = {
         "doc": "...",
         "git_hash": "nogitversion",
@@ -114,7 +114,7 @@ def getversion(request: Request):
 
 @application.post("/parse", status_code=status.HTTP_201_CREATED)
 async def parse(request: Request, file: UploadFile, response: Response):
-    request.app.logger.info(f'Request parse file "{file.filename}"')
+    #request.app.logger.info(f'Request parse file "{file.filename}"')
 
     # check if the post request has the file part
     if splitext(file.filename)[1] != ".ttl":  # type: ignore[type-var]
