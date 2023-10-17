@@ -129,6 +129,7 @@ async def parse(request: Request, file: UploadFile, response: Response):
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
         else:
             # request.app.logger.info("File successfully read")
+            pass
 
         # Prepare the content
         content = content.decode("utf-8")  # type: ignore[assignment]
@@ -152,6 +153,7 @@ async def parse(request: Request, file: UploadFile, response: Response):
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
         else:
             # request.app.logger.info(f"File successfully parsed")
+            pass
 
         # Send the data to a FIWARE Context Broker instance
         headers = {
@@ -187,6 +189,7 @@ async def parse(request: Request, file: UploadFile, response: Response):
         else:
             # request.app.logger.info(f"Content sent to the Context Broker")
             # request.app.logger.debug(f"Status Code: {response.status_code}, Response:\n{resp}")
+            pass
 
     return resp
 
