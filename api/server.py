@@ -100,7 +100,7 @@ async def set_secure_headers(request, call_next):
 
 @application.get("/version", status_code=status.HTTP_200_OK)
 def getversion(request: Request):
-    # #request.app.logger.info("Request version information")
+    # request.app.logger.info("Request version information")
     data = {
         "doc": "...",
         "git_hash": "nogitversion",
@@ -114,21 +114,21 @@ def getversion(request: Request):
 
 @application.post("/parse", status_code=status.HTTP_201_CREATED)
 async def parse(request: Request, file: UploadFile, response: Response):
-    # #request.app.logger.info(f'Request parse file "{file.filename}"')
+    # request.app.logger.info(f'Request parse file "{file.filename}"')
 
     # check if the post request has the file part
     if splitext(file.filename)[1] != ".ttl":  # type: ignore[type-var]
         resp = {"message": "Allowed file type is only ttl"}
         response.status_code = status.HTTP_400_BAD_REQUEST
-        request.app.logger.error(f'POST /parse 400 Bad Request, file: "{file.filename}"')
+        # request.app.logger.error(f'POST /parse 400 Bad Request, file: "{file.filename}"')
     else:
         try:
             content = await file.read()
         except Exception as e:
-            request.app.logger.error(f'POST /parse 500 Problem reading file: "{file.filename}"')
+            # request.app.logger.error(f'POST /parse 500 Problem reading file: "{file.filename}"')
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
         else:
-            request.app.logger.info("File successfully read")
+            # request.app.logger.info("File successfully read")
 
         # Prepare the content
         content = content.decode("utf-8")  # type: ignore[assignment]
@@ -139,19 +139,19 @@ async def parse(request: Request, file: UploadFile, response: Response):
         try:
             json_object = my_parser.parsing(content=StringIO(content))  # type: ignore[arg-type]
         except UnexpectedToken as e:
-            request.app.logger.error(e)
+            # request.app.logger.error(e)
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
         except UnexpectedInput as e:
-            request.app.logger.error(e)
+            # request.app.logger.error(e)
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
         except UnexpectedEOF as e:
-            request.app.logger.error(e)
+            # request.app.logger.error(e)
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
         except Exception as e:
-            request.app.logger.error(f'POST /parse 500 Problem parsing file: "{file.filename}"')
+            # request.app.logger.error(f'POST /parse 500 Problem parsing file: "{file.filename}"')
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
         else:
-            request.app.logger.info(f"File successfully parsed")
+            # request.app.logger.info(f"File successfully parsed")
 
         # Send the data to a FIWARE Context Broker instance
         headers = {
@@ -162,31 +162,31 @@ async def parse(request: Request, file: UploadFile, response: Response):
         url = get_url()
 
         try:
-            request.app.logger.debug(f"Sending data:\n{json_object}")
+            # request.app.logger.debug(f"Sending data:\n{json_object}")
             cb = NGSILDConnector()
             resp = cb.send_data_array(json_object)
             # resp = loads(r.text)
             # response.status_code = r.status_code
         except exceptions.Timeout as err:
-            request.app.logger.error("Timeout requesting FIWARE Context Broker")
+            # request.app.logger.error("Timeout requesting FIWARE Context Broker")
             raise HTTPException(status_code=status.HTTP_408_REQUEST_TIMEOUT, detail=str(err))
         except exceptions.ConnectionError as err:
             message = f"There was a problem connecting to the FIWARE Context Broker. URL: {url}"
-            request.app.logger.error(message)
+            # request.app.logger.error(message)
             raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(err))
         except exceptions.HTTPError as e:
-            request.app.logger.error(f"Call to FIWARE Context Broker failed: {e}")
+            # request.app.logger.error(f"Call to FIWARE Context Broker failed: {e}")
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
         except KeyboardInterrupt:
-            request.app.logger.warning("Server interrupted by user")
+            # request.app.logger.warning("Server interrupted by user")
             raise
         except Exception as e:
             r = getattr(e, "message", str(e))
-            request.app.logger.error(r)
+            # request.app.logger.error(r)
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(r))
         else:
-            request.app.logger.info(f"Content sent to the Context Broker")
-            request.app.logger.debug(f"Status Code: {response.status_code}, Response:\n{resp}")
+            # request.app.logger.info(f"Content sent to the Context Broker")
+            # request.app.logger.debug(f"Status Code: {response.status_code}, Response:\n{resp}")
 
     return resp
 
