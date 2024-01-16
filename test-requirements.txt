@@ -1,9 +1,9 @@
 # python3.11, virtualenv -ppython3.11 .venv
 # file with the requirements to execute the python tests using tox
 pytest==7.4.2
-tox==4.11.3
+tox==4.11.4
 types-docopt==0.6.11.4
 types-python-dateutil==2.8.19.14
 types-pytz==2023.3.1.1
-types-requests==2.31.0.2
+types-requests==2.31.0.10
 coverage==7.3.2

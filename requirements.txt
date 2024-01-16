@@ -1,11 +1,11 @@
 # python3.11, virtualenv -ppython3.11 .venv
-lark==1.1.7
+lark==1.1.8
 secure==0.3.0
 docopt==0.6.2
 schema==0.7.5
 hi-dateinfer==0.4.6
-fastapi==0.103.0
-uvicorn==0.23.2
+fastapi==0.108.0
+uvicorn==0.25.0
 python-multipart==0.0.6
 loguru==0.7.2
 requests==2.31.0
